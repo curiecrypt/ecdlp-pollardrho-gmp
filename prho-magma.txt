@@ -1,0 +1,105 @@
+
+clear;
+
+sum := function(P,Q,A,E)
+
+	x1 := P[1];
+	x2 := Q[1];
+	y1 := P[2];
+	y2 := Q[2];
+
+	if P eq E!0 then return Q;
+	elif Q eq E!0 then return P;
+	elif x1 eq x2 then
+		if y1 ne y2 then return E!0;
+		elif y2 eq 0 then return E!0;
+		else
+			x3 := ((3*x1^2 + A )/(2*y1))^2 - 2*x1 ;
+			y3 := (3*x1^2 + A )/(2*y1)*(x1-x3) - y1 ;
+			return E![x3,y3];
+		end if ;
+	else
+		x3 := ((y1- y2)/(x1-x2))^2 - x1- x2 ;
+		y3 := (y1- y2)/(x1-x2) * (x1-x3) -y1 ;
+		return E![x3,y3];
+	end if ;
+
+end function;
+
+mult := function(k,P,E,A)
+	M :=E!0;
+	K := IntegerToSequence(k,2);
+
+	for i in [1..#K] do
+		if K[i] eq 1 then
+			M := sum(M,P,A,E);
+		end if;
+		P := sum(P,P,A,E);
+	end for;
+	return M;
+end function;
+
+
+p := NextPrime(Random([0..2^64]));
+F := FiniteField(p);
+
+repeat
+	repeat
+		A := Random(F);
+		B := Random(F);
+	until (4*A^3 +27*B^2) ne 0 ;
+	E := EllipticCurve([A,B]);
+until IsPrime(#E);
+
+P := Random(E);
+n := Order(P);
+k := Random([0..n]);
+Q := mult(k,P,E,A);
+
+L := 32 ;
+H := function(P)
+	x := P[1];
+	return((Integers()!x)mod L) +1;
+end function;
+
+a := [];
+b := [];
+R := [];
+
+for j in [1..L] do
+	a[j] := Random([0..n-1]);
+	b[j] := Random([0..n-1]);
+	R[j] := sum(mult(a[j],P,E,A),mult(b[j],Q,E,A),A,E);
+end for ;
+
+cd := Random([0..n-1]);
+dd := Random([0..n-1]);
+Xd := sum(mult(cd,P,E,A), mult(dd,Q,E,A),A,E);
+
+Xdd := Xd;
+cdd := cd;
+ddd := dd;
+
+repeat
+	j := H(Xd) ;
+	Xd := sum(Xd, R[j], A,E) ;
+	cd := (cd + a[j]) mod n ;
+	dd := (dd + b[j]) mod n ;
+	for i in [1..2] do
+		j := H(Xdd);
+		Xdd := sum(Xdd, R[j], A,E) ;
+		cdd := (cdd + a[j]) mod n ;
+		ddd := (ddd + b[j]) mod n ;
+	end for ;
+until Xd eq Xdd ;
+
+if dd eq ddd then
+	print "failure";
+else
+     ((cd - cdd) * Modinv(ddd-dd,n)) mod n;
+end if;
+
+k;
+
+
+Log(P,Q);
