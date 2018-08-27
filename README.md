@@ -3,84 +3,76 @@ This C code is the GMP implementation of Pollard's Rho Attack on Elliptic Curve 
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+In order to compile this code, a C compiler and [GMP Library](https://gmplib.org/)  (The GNU Multiple Precision Arithmetic Library) is required. gcc version 6.3.0 and GMP 6.1.2. have been used for testing.
 
-### Prerequisites
+[Magma](http://magma.maths.usyd.edu.au/magma/) Computational Algebra System is used as an intermediate step between theory and programming. Also, the inputs of C code are obtained from Magma (See Testing section). You can purchase the software or can use the [Online Calculator](http://magma.maths.usyd.edu.au/calc/). Open-source lovers can use [SageMath](http://www.sagemath.org/) as well but this repository only contains Magma scripts.
 
-What things you need to install the software and how to install them
 
-```
-Give examples
-```
+## Testing
 
-### Installing
-
-A step by step series of examples that tell you how to get a development env running
-
-Say what the step will be
+First step is to create elliptic curve and choose the random variables in Magma. The following functions will be needed:
 
 ```
-Give the example
+sum := function(P,Q,A,E)
+
+	x1 := P[1];
+	x2 := Q[1];
+	y1 := P[2];
+	y2 := Q[2];
+
+	if P eq E!0 then return Q;
+	elif Q eq E!0 then return P;
+	elif x1 eq x2 then
+		if y1 ne y2 then return E!0;
+		elif y2 eq 0 then return E!0;
+		else
+			x3 := ((3*x1^2 + A )/(2*y1))^2 - 2*x1 ;
+			y3 := (3*x1^2 + A )/(2*y1)*(x1-x3) - y1 ;
+			return E![x3,y3];
+		end if ;
+	else
+		x3 := ((y1- y2)/(x1-x2))^2 - x1- x2 ;
+		y3 := (y1- y2)/(x1-x2) * (x1-x3) -y1 ;
+		return E![x3,y3];
+	end if ;
+
+end function;
+
+mult := function(k,P,E,A)
+	M :=E!0;
+	K := IntegerToSequence(k,2);
+
+	for i in [1..#K] do
+		if K[i] eq 1 then
+			M := sum(M,P,A,E);
+		end if;
+		P := sum(P,P,A,E);
+	end for;
+	return M;
+end function;
 ```
 
-And repeat
+Then, you can obtain the inputs for attack:
 
 ```
-until finished
+p := NextPrime(Random([0..2^64]));
+F := FiniteField(p);
+
+repeat
+	repeat
+		A := Random(F);
+		B := Random(F);
+	until (4*A^3 +27*B^2) ne 0 ;
+	E := EllipticCurve([A,B]);
+until IsPrime(#E);
+
+P := Random(E);
+n := Order(P);
+k := Random([0..n]);
+Q := mult(k,P,E,A);
+
+P; Q; n; k;
 ```
+The full Magma code can be used for the verification of results of the C code.
 
-End with an example of getting some data out of the system or using it for a little demo
-
-## Running the tests
-
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-## Deployment
-
-Add additional notes about how to deploy this on a live system
-
-## Built With
-
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
-
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags).
-
-## Authors
-
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
+Note: Magma Online Calculator has time limitation, thus Magma code cannot be run on Online calc. for 64 bit parameters.
